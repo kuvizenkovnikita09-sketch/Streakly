@@ -3,7 +3,7 @@
   --bg:#0a0a0c;--head:#111114;--card:#17181c;--edge:#3a3d46;--text:#f2f2f4;--muted:#a3a6ae;
   --g1:#22242a;--g2:#2c2f36;--g3:#454953;--g4:#6a6f7a;--sh:#24262c;
   --neon:#b04dff;--neon-d:#7b2fd6;
-  --ok:#3ddc97;--part:#f2b632;--miss:#ff6b6b;
+  --ok:#46d35c;--over:#19d9cf;--part:#f2b632;--miss:#ff6b6b;
   --ease:cubic-bezier(.2,.8,.2,1);
 }
 *{box-sizing:border-box}
@@ -87,7 +87,9 @@ input:focus{border-color:var(--neon);box-shadow:3px 3px 0 var(--neon-d);outline:
 .grid2{display:grid;grid-template-columns:1.1fr 1fr;gap:24px}
 .big{font-size:4rem;line-height:1;margin:4px 0 8px;color:var(--neon)}
 .big small{font-family:Onest,sans-serif;font-size:1rem;color:var(--muted);margin-left:8px}
-#reportForm .btn{width:100%;margin-top:16px}
+.mycourses{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.rf .btn{width:100%;margin-top:16px}
+.card .small{padding:7px 14px;font-size:.85rem;margin-top:12px}
 .ok-msg{color:var(--ok);font-weight:700;min-height:1.4em;margin:8px 0 0}
 
 .row{display:flex;align-items:center;gap:10px;margin:10px 0}
@@ -96,7 +98,7 @@ input:focus{border-color:var(--neon);box-shadow:3px 3px 0 var(--neon-d);outline:
 .bar{flex:1;height:16px;border-radius:2px;background:var(--g1);overflow:hidden}
 .bar b{display:block;height:100%;border-radius:2px;transition:width .6s var(--ease)}
 .ok{background:var(--ok)}.pt{background:var(--part)}.ms{background:var(--miss)}
-.ov{background:var(--neon);box-shadow:0 0 12px var(--neon)}
+.ov{background:var(--over);box-shadow:0 0 12px var(--over)}
 .pc{width:44px;text-align:right;font-weight:700}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px}
@@ -130,6 +132,23 @@ input:focus{border-color:var(--neon);box-shadow:3px 3px 0 var(--neon-d);outline:
 .p3 .step{height:72px;background:var(--g2);animation-delay:.4s}
 .pl.me .nm{text-decoration:underline;text-underline-offset:3px}
 @keyframes rise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+/* календарь статистики */
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.cal-head h2{margin:0}
+.cal-head .btn{padding:6px 16px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dow{text-align:center;color:var(--muted);font-weight:500;font-size:.85rem}
+.cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;border-radius:3px;background:var(--g1);font-weight:700;
+  transition:transform .3s var(--ease)}
+.cell small{font-size:.7rem;font-weight:500}
+.cell:hover{transform:translateY(-4px)}
+.cell.ok{background:var(--ok);color:#052b0d}.cell.pt{background:var(--part);color:#2a1d00}
+.cell.ms{background:var(--miss);color:#2b0505}.cell.ov{background:var(--over);color:#022a28}
+.cell.today{border-color:var(--text)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;list-style:none;margin:16px 0 0;padding:0;color:var(--muted);font-size:.9rem}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:2px;margin-right:6px;vertical-align:-2px}
+@media (max-width:520px){.cell small{display:none}}
 
 /* боковая панель-«ящик» с закладкой */
 .layout{max-width:980px;margin:0 auto;padding:32px 20px 64px}
