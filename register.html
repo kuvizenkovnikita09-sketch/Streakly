@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Регистрация — Streakly</title>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="register">
+  <header class="header"><div class="wrap">
+    <a class="logo" href="index.html">Streakly</a>
+    <nav class="nav" id="nav"></nav>
+  </div></header>
+  <main>
+    <form class="auth card" id="registerForm" novalidate>
+      <h1>Регистрация</h1>
+      <label for="username">Имя пользователя</label>
+      <input id="username" name="username" type="text" autocomplete="username" required>
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      <p class="error" id="err" role="alert"></p>
+      <button class="btn" type="submit">Создать аккаунт</button>
+      <p class="alt">Уже есть аккаунт? <a href="login.html">Войти</a></p>
+    </form>
+  </main>
+  <script src="js/courses.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

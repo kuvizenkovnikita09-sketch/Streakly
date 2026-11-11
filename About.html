@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>О сайте — Streakly</title>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="about">
+  <header class="header"><div class="wrap">
+    <a class="logo" href="index.html">Streakly</a>
+    <nav class="nav" id="nav"></nav>
+  </div></header>
+  <div class="layout">
+    <aside class="side" id="side"></aside>
+    <main class="content page">
+      <h1 class="hi">О сайте</h1>
+      <section class="card text">
+        <h2>Что такое Streakly</h2>
+        <p>Streakly помогает приучить себя к регулярным тренировкам. Вы выбираете курс, а сайт каждый день даёт норму: сколько подходов и повторений сделать. Вы отмечаете результат и видите, как держится ваша серия.</p>
+      </section>
+      <section class="card text">
+        <h2>Как это работает</h2>
+        <ol>
+          <li><strong>Выберите курс</strong> в разделе «Курсы».</li>
+          <li><strong>Откройте «Мои курсы»</strong>: там норма на сегодня.</li>
+          <li><strong>Запишите подходы</strong> и сохраните отчёт.</li>
+          <li><strong>Следите за прогрессом:</strong> неделя, месяц, серия дней и место в лидерборде.</li>
+        </ol>
+      </section>
+      <section class="card text">
+        <h2>Как считаются проценты</h2>
+        <p>Процент дня равен сделанному, делённому на норму. Если норма 3×20 = 60 повторений, а вы сделали 72, то день засчитывается как <strong>120%</strong>.</p>
+        <p>Результат выше нормы не ограничивается 100%: он поднимает средний процент за неделю и месяц и помогает в рейтинге. Полоса дня при этом становится тёмной.</p>
+      </section>
+      <section class="card text">
+        <h2>Что дальше</h2>
+        <ul>
+          <li>сервер на Flask и база данных вместо хранения в браузере;</li>
+          <li>настоящий рейтинг между пользователями;</li>
+          <li>статистика за год и графики;</li>
+          <li>свои курсы и достижения за серии.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+  <script src="js/courses.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

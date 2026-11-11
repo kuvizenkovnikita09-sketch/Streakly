@@ -1,0 +1,148 @@
+/* Streakly: бело-серый «кубический» стиль */
+:root{
+  --bg:#bfc4cb;--card:#e9ebee;--ink:#22252a;--muted:#454c56;--line:#b3b9c1;
+  --g1:#dde0e4;--g2:#cfd3d8;--g3:#a3aab3;--g4:#7f8791;--sh:#9ba2ab;
+  --ok:#1f7a54;--part:#c99200;--miss:#b02f28;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:Onest,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55;
+  background-color:var(--bg);
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:40px 40px}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px}
+h1,h2,h3,.logo,.big,.tile strong{font-family:"Russo One",Onest,sans-serif;font-weight:400;margin:0}
+h2{font-size:1.2rem;margin-bottom:4px}
+
+/* шапка */
+.header{background:var(--card);border-bottom:2px solid var(--ink)}
+.header .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-size:1.4rem;text-decoration:none}
+.nav{display:flex;gap:22px;align-items:center}
+.nav a:not(.btn){position:relative;text-decoration:none;color:var(--muted);font-weight:500;transition:color .25s}
+.nav a:not(.btn)::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:2px;background:var(--ink);transform:scaleX(0);transform-origin:left;transition:transform .3s var(--ease)}
+.nav a:not(.btn):hover{color:var(--ink)}
+.nav a:not(.btn):hover::after{transform:scaleX(1)}
+
+/* кнопки: при наведении «приподнимаются» */
+.btn{display:inline-block;padding:12px 22px;border:2px solid var(--ink);border-radius:4px;background:var(--ink);color:#fff;font:inherit;font-weight:700;text-decoration:none;cursor:pointer;
+  box-shadow:0 0 0 var(--g4);
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease),background-color .3s,color .3s}
+.btn:hover{transform:translate(-3px,-3px);box-shadow:5px 5px 0 var(--g4)}
+.btn:active{transform:translate(0,0);box-shadow:0 0 0 var(--g4);transition-duration:.08s}
+.btn-ghost{background:var(--card);color:var(--ink)}
+.btn-ghost:hover{background:var(--ink);color:#fff}
+
+/* главная */
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;padding:64px 0 56px}
+.hero h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.12;margin-bottom:16px}
+.hero p{color:var(--muted);font-size:1.1rem;max-width:44ch;margin:0 0 28px}
+.mosaic{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:6px 0}
+.mosaic i{aspect-ratio:1;border-radius:3px;transform:translateY(var(--y,0));
+  box-shadow:inset 2px 2px 0 rgba(255,255,255,.7),inset -2px -2px 0 rgba(0,0,0,.08);
+  transition:transform .4s var(--ease),box-shadow .4s var(--ease)}
+.mosaic i.up{--y:-6px;box-shadow:inset 2px 2px 0 rgba(255,255,255,.7),inset -2px -2px 0 rgba(0,0,0,.08),0 6px 0 rgba(34,37,42,.14)}
+.mosaic i:hover{--y:-10px;box-shadow:inset 2px 2px 0 rgba(255,255,255,.7),inset -2px -2px 0 rgba(0,0,0,.08),0 10px 0 rgba(34,37,42,.18)}
+.g0{background:#eef0f2}.g1{background:var(--g1)}.g2{background:var(--g2)}.g3{background:var(--g3)}.g4{background:var(--g4)}.g5{background:var(--ink)}
+#courses{padding-bottom:64px;scroll-margin-top:16px}
+.courses{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;margin-top:20px}
+.course{background:var(--card);border:2px solid var(--ink);border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:6px 6px 0 var(--sh);transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.course:hover{transform:translate(-3px,-3px);box-shadow:9px 9px 0 var(--sh)}
+.course h3{font-size:1.15rem}
+.course p{margin:0;color:var(--muted)}
+.course .meta{margin-top:auto;padding-top:8px;color:var(--ink);font-weight:700}
+
+/* фильтр курсов */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.chip{padding:7px 16px;border:2px solid var(--ink);border-radius:4px;background:var(--card);color:var(--ink);font:inherit;font-weight:500;cursor:pointer;
+  transition:transform .25s var(--ease),background-color .25s,color .25s,box-shadow .25s var(--ease)}
+.chip:hover{transform:translateY(-2px);box-shadow:0 3px 0 var(--sh)}
+.chip.on{background:var(--ink);color:#fff}
+.tag{align-self:flex-start;padding:2px 10px;border-radius:3px;background:var(--g2);font-size:.8rem;font-weight:700}
+
+/* карточки и формы */
+.card{background:var(--card);border:2px solid var(--ink);border-radius:4px;padding:24px;box-shadow:6px 6px 0 var(--sh)}
+.sub{margin:0 0 16px;color:var(--muted);font-size:.95rem}
+label{display:block;font-size:.85rem;font-weight:500;margin:12px 0 4px;color:var(--muted)}
+input{width:100%;padding:10px 12px;font:inherit;color:var(--ink);background:var(--g1);border:2px solid var(--g3);border-radius:4px;transition:border-color .25s,box-shadow .25s,background-color .25s}
+input:focus{border-color:var(--ink);background:#f4f5f7;box-shadow:3px 3px 0 var(--sh);outline:none}
+.auth{max-width:400px;margin:56px auto}
+.auth h1{font-size:1.6rem;margin-bottom:12px}
+.auth .btn{width:100%;margin-top:20px}
+.alt{text-align:center;color:var(--muted);margin:16px 0 0}
+.error{color:var(--miss);min-height:1.4em;margin:12px 0 0}
+
+/* личный кабинет */
+.page{display:grid;gap:24px}
+.hi{font-size:1.7rem}
+.grid2{display:grid;grid-template-columns:1.1fr 1fr;gap:24px}
+.big{font-size:4rem;line-height:1;margin:4px 0 8px}
+.big small{font-family:Onest,sans-serif;font-size:1rem;color:var(--muted);margin-left:8px}
+#reportForm .btn{width:100%;margin-top:16px}
+.ok-msg{color:var(--ok);font-weight:700;min-height:1.4em;margin:8px 0 0}
+
+.row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.row i{width:28px;font-style:normal;color:var(--muted);font-weight:500}
+.row i.now{color:var(--ink);font-weight:700}
+.bar{flex:1;height:16px;border-radius:2px;background:var(--g2);overflow:hidden}
+.bar b{display:block;height:100%;border-radius:2px;transition:width .6s var(--ease)}
+.ok{background:var(--ok)}.ov{background:var(--ink)}.pt{background:var(--part)}.ms{background:var(--miss)}
+.pc{width:44px;text-align:right;font-weight:700}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px}
+.tile{padding:16px;border-radius:3px;background:var(--g1);color:var(--muted);font-size:.9rem;transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.tile:nth-child(2){background:var(--g2)}.tile:nth-child(3){background:var(--g3);color:var(--ink)}
+.tile:nth-child(4){background:var(--ink);color:#d9dde2}
+.tile strong{display:block;font-size:2rem;line-height:1.3;color:inherit}
+.tile:nth-child(4) strong{color:#fff}
+.tile:hover{transform:translateY(-4px);box-shadow:0 4px 0 var(--g4)}
+.board{list-style:none;margin:0;padding:0}
+.board li{display:flex;justify-content:space-between;padding:10px 14px;border-radius:3px;transition:transform .25s var(--ease)}
+.board li:nth-child(odd){background:var(--g1)}
+.board li:hover{transform:translateX(4px)}
+.board li.me{background:var(--ink);color:#fff}
+.note{color:var(--muted);font-size:.85rem;margin:12px 0 0}
+
+/* боковая панель-«ящик» с закладкой */
+.layout{max-width:980px;margin:0 auto;padding:32px 20px 64px}
+.side{position:fixed;left:0;top:90px;z-index:20;display:flex;align-items:flex-start;transform:translateX(-246px);transition:transform .45s var(--ease)}
+.side.open{transform:translateX(0)}
+.panel{width:240px;padding:16px;display:grid;gap:10px;background:var(--card);border:2px solid var(--ink);border-left:0;border-radius:0 4px 4px 0;box-shadow:6px 6px 0 var(--sh)}
+.panel h2{font-size:1rem;margin:0 0 2px}
+.panel a{display:block;padding:12px 16px;border:2px solid var(--ink);border-radius:4px;background:var(--card);color:var(--ink);font-weight:700;text-decoration:none;
+  box-shadow:0 0 0 var(--sh);transition:transform .3s var(--ease),box-shadow .3s var(--ease),background-color .3s,color .3s}
+.panel a:hover{transform:translate(-3px,-3px);box-shadow:5px 5px 0 var(--sh)}
+.panel a.on{background:var(--ink);color:#fff}
+/* кнопка-закладка (книжная лента с «ласточкиным хвостом») */
+.ribbon{margin-left:6px;width:44px;height:132px;padding:18px 0 0;display:flex;justify-content:center;align-items:flex-start;border:0;background:var(--ink);color:#fff;cursor:pointer;
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 84%,0 100%);transition:height .35s var(--ease),background-color .3s}
+.ribbon span{writing-mode:vertical-rl;font:400 .85rem "Russo One",sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.ribbon:hover{height:152px;background:#3a3f47}
+.ribbon:focus-visible{outline:none;background:#4a515b}
+.content .hero{grid-template-columns:1fr 1fr;gap:32px;padding:8px 0 40px}
+.who{font-weight:700}
+.board em{display:inline-block;width:30px;font:400 1rem "Russo One",sans-serif;font-style:normal}
+.text{color:var(--muted)}.text p{margin:0 0 10px}.text ol,.text ul{margin:0;padding-left:22px}.text li{margin:6px 0}.text strong{color:var(--ink)}
+
+/* пьедестал */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:16px 0 28px}
+.pl{flex:1;max-width:190px;display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.man{width:46px;height:80px;fill:var(--ink);stroke:var(--ink);margin-bottom:6px;transition:transform .35s var(--ease)}
+.pl:hover .man{transform:translateY(-8px)}
+.nm{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.pl b{font:400 1.3rem "Russo One",sans-serif;margin-bottom:8px}
+.step{width:100%;display:flex;align-items:center;justify-content:center;border:2px solid var(--ink);border-radius:4px 4px 0 0;
+  font:400 2.2rem "Russo One",sans-serif;box-shadow:5px 0 0 var(--sh);transform-origin:bottom;animation:rise .7s var(--ease) both;transition:transform .3s var(--ease)}
+.pl:hover .step{transform:translateY(-4px)}
+.p1 .step{height:140px;background:var(--ink);color:#fff;animation-delay:.1s}
+.p2 .step{height:100px;background:var(--g3);animation-delay:.25s}
+.p3 .step{height:72px;background:var(--g2);animation-delay:.4s}
+.pl.me .nm{text-decoration:underline;text-underline-offset:3px}
+@keyframes rise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+@media (max-width:860px){.ribbon{width:36px}.layout{padding-left:48px}}
+@media (max-width:720px){.hero{grid-template-columns:1fr;gap:32px;padding-top:40px}.grid2{grid-template-columns:1fr}.big{font-size:3.2rem}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}

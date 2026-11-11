@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Курсы — Streakly</title>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="home">
+  <header class="header"><div class="wrap">
+    <a class="logo" href="index.html">Streakly</a>
+    <nav class="nav" id="nav"></nav>
+  </div></header>
+  <div class="layout">
+    <aside class="side" id="side"></aside>
+    <main class="content">
+    <section class="hero">
+      <div>
+        <h1>Выбери курс. Сделай норму. Отметь день.</h1>
+        <p>У каждого курса своя норма на каждый день. Записывай, сколько сделал, и складывай дни в серию, как кубики.</p>
+        <a class="btn" href="#courses">Выбрать курс</a>
+      </div>
+      <div class="mosaic" id="mosaic" aria-hidden="true"></div>
+    </section>
+    <section id="courses">
+      <h2>Курсы</h2>
+      <div class="filters" id="filters"></div>
+      <div class="courses" id="courseList"></div>
+    </section>
+  </main>
+  </div>
+  <script src="js/courses.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
