@@ -92,30 +92,24 @@ function sumPct(e, from, to) {
 }
 
 // Средний процент по всем курсам за период
-function avgPct(u, from, to) {
-  let sum = 0, k = 0;
-  for (const e of enrolls(u)) { const [s, n] = sumPct(e, from, to); sum += s; k += n; }
-  return k ? Math.round(100 * sum / k) : null;
+function avgPct(e, from, to) {  // средний процент по одному курсу за период
+  const [s, k] = sumPct(e, from, to);
+  return k ? Math.round(100 * s / k) : null;
 }
 
 // Средний процент за один день по всем активным в этот день курсам
-function dayAvg(u, date) {
-  const list = enrolls(u).map(e => dayPct(e, date)).filter(p => p !== null);
-  return list.length ? list.reduce((x, y) => x + y, 0) / list.length : null;
-}
 
-// Серия: дни подряд, когда выполнен хотя бы один курс
-const anyDone = (u, d) => enrolls(u).some(e => dayPct(e, d) >= 1);
-function streak(u) {
+// Серия по курсу: дни подряд, когда норма выполнена
+function streak(e) {
   let d = today(), n = 0;
-  if (!anyDone(u, d)) d = addDays(d, -1);
-  while (anyDone(u, d)) { n++; d = addDays(d, -1); }
+  if (!(dayPct(e, d) >= 1)) d = addDays(d, -1);
+  while (dayPct(e, d) >= 1) { n++; d = addDays(d, -1); }
   return n;
 }
 
-function monthScore(u) {
+function monthScore(e) {
   const t = today();
-  return avgPct(u, new Date(t.getFullYear(), t.getMonth(), 1), t);
+  return avgPct(e, new Date(t.getFullYear(), t.getMonth(), 1), t);
 }
 
 // ===== Интерфейс =====
@@ -206,31 +200,34 @@ function renderToday(u) {
   });
 }
 
-function renderWeek(u) {
+function weekRows(e) {  // полосы выполнения по дням текущей недели для одного курса
   const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const monday = addDays(today(), -((today().getDay() + 6) % 7));
-  const reportedToday = enrolls(u).some(e => e.reports[iso(today())]);
-  $('week').innerHTML = names.map((nm, i) => {
+  return names.map((nm, i) => {
     const date = addDays(monday, i), isToday = iso(date) === iso(today());
-    const p = date > today() || (isToday && !reportedToday) ? null : dayAvg(u, date);
+    const p = date > today() || (isToday && !e.reports[iso(date)]) ? null : dayPct(e, date);
     const w = p === null ? 0 : Math.max(4, Math.min(100, p * 100));
     return `<div class="row"><i${isToday ? ' class="now"' : ''}>${nm}</i>
       <span class="bar"><b class="${status(p)}" style="width:${w}%"></b></span>
       <span class="pc">${p === null ? '–' : Math.round(p * 100) + '%'}</span></div>`;
   }).join('');
-  const wp = avgPct(u, monday, today());
-  $('weekSub').textContent = wp === null ? 'Пока нет данных' : `${wp}% нормы выполнено (по всем курсам)`;
 }
 
 const tile = (v, l) => `<div class="tile"><strong>${v}</strong>${l}</div>`;
 
-function renderStats(u) {
+function renderCourseStats(u) {  // отдельная карточка статистики для каждого курса
   const t = today(), monday = addDays(t, -((t.getDay() + 6) % 7));
-  const weekPct = avgPct(u, monday, t), monthPct = monthScore(u);
-  const total = enrolls(u).flatMap(e => Object.values(e.reports).flat()).reduce((x, y) => x + y, 0);
-  $('stats').innerHTML =
-    tile(streak(u), 'дней подряд') + tile(weekPct === null ? '–' : weekPct + '%', 'за неделю') +
-    tile(monthPct === null ? '–' : monthPct + '%', 'за месяц') + tile(total, 'всего выполнено');
+  $('perCourse').innerHTML = enrolls(u).map(e => {
+    const wp = avgPct(e, monday, t), mp = monthScore(e);
+    const total = Object.values(e.reports).flat().reduce((x, y) => x + y, 0);
+    return `<section class="card">
+      <h2>${courseOf(e).title}</h2>
+      <p class="sub">${wp === null ? 'Пока нет данных за неделю' : wp + '% нормы за неделю'}</p>
+      <div>${weekRows(e)}</div>
+      <div class="tiles">${tile(streak(e), 'дней подряд') + tile(wp === null ? '–' : wp + '%', 'за неделю') +
+        tile(mp === null ? '–' : mp + '%', 'за месяц') + tile(total, 'всего выполнено')}</div>
+    </section>`;
+  }).join('');
 }
 
 function renderSide() {
@@ -262,10 +259,27 @@ function figure(winner) {
     <path d="${arms}" fill="none" stroke-width="5"/></svg>`;
 }
 
+// Демо-участники: у каждого курса свои значения (одинаковые при каждом заходе)
+function demoPct(cid, name) {
+  let h = 0;
+  for (const ch of cid + name) h = (h * 31 + ch.charCodeAt(0)) % 1000;
+  return 62 + h % 48;
+}
+
+const boardView = { cid: null };
+
 function renderBoard() {
   const d = DB.load(), u = d.session && d.users[d.session];
-  const list = [{ n: 'Алина', p: 104 }, { n: 'Максим', p: 88 }, { n: 'Дмитрий', p: 81 }, { n: 'Ольга', p: 72 }, { n: 'Иван', p: 65 }];
-  if (u) list.push({ n: d.session, p: monthScore(u) || 0, me: true });
+  if (!boardView.cid) boardView.cid = (u && Object.keys(u.enrolls)[0]) || COURSES[0].id;
+  const c = COURSES.find(x => x.id === boardView.cid);
+  const joined = u && Object.hasOwn(u.enrolls, c.id);
+  $('boardTitle').textContent = 'Рейтинг месяца: ' + c.title;
+  $('boardSub').textContent = 'Средний процент выполнения нормы по этому курсу с начала месяца. Выше 100% можно получить, если делать больше нормы.' +
+    (u && !joined ? ' Выберите этот курс, чтобы попасть в рейтинг.' : '');
+  $('boardFilters').innerHTML = COURSES.map(x =>
+    `<button class="chip${x.id === c.id ? ' on' : ''}" data-board="${x.id}">${esc(x.title)}</button>`).join('');
+  const list = ['Алина', 'Максим', 'Дмитрий', 'Ольга', 'Иван'].map(n => ({ n, p: demoPct(c.id, n) }));
+  if (joined) list.push({ n: d.session, p: monthScore(u.enrolls[c.id]) || 0, me: true });
   list.sort((x, y) => y.p - x.p);
   const places = [2, 1, 3];  // на пьедестале слева направо: 2-е, 1-е, 3-е место
   $('podium').innerHTML = [list[1], list[0], list[2]].map((r, i) => `
@@ -283,7 +297,7 @@ function renderDashboard() {
   if (!d.session) { location.href = 'login.html'; return; }
   const u = d.users[d.session];
   $('hi').textContent = `Привет, ${d.session}!`;
-  renderToday(u); renderWeek(u); renderStats(u);
+  renderToday(u); renderCourseStats(u);
 }
 
 // Фон из кубиков: по диагонали проходит неоновая фиолетовая волна
@@ -329,24 +343,24 @@ function initWave() {
 
 // ===== Моя статистика: календарь по месяцам =====
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-const view = { month: null, cid: 'all' };  // какой месяц и курс показаны
+const view = { month: null, cid: null };  // какой месяц и курс показаны
 
 function renderStatsPage() {
   const d = DB.load();
   if (!d.session) { location.href = 'login.html'; return; }
   const u = d.users[d.session], list = enrolls(u);
   if (!view.month) { const t = today(); view.month = new Date(t.getFullYear(), t.getMonth(), 1); }
-  if (view.cid !== 'all' && !u.enrolls[view.cid]) view.cid = 'all';
+  if (!u.enrolls[view.cid]) view.cid = Object.keys(u.enrolls)[0];
   const m = view.month, y = m.getFullYear(), mo = m.getMonth();
   $('monthTitle').textContent = `${MONTHS[mo]} ${y}`;
-  $('statsFilters').innerHTML = [['all', 'Все курсы'], ...list.map(e => [e.course, courseOf(e).title])].map(([id, t]) =>
+  $('statsFilters').innerHTML = list.map(e => [e.course, courseOf(e).title]).map(([id, t]) =>
     `<button class="chip${id === view.cid ? ' on' : ''}" data-cid="${id}">${esc(t)}</button>`).join('');
   if (!list.length) {
     $('calendar').innerHTML = '<p class="sub">Пока нет курсов. Выберите курс в разделе «Курсы».</p>';
     $('monthStats').innerHTML = ''; $('monthSub').textContent = '';
     return;
   }
-  const pick = view.cid === 'all' ? list : [u.enrolls[view.cid]];
+  const pick = [u.enrolls[view.cid]];
   const pct = date => {
     const l = pick.map(e => dayPct(e, date)).filter(p => p !== null);
     return l.length ? l.reduce((x, y) => x + y, 0) / l.length : null;
@@ -378,7 +392,12 @@ if (page === 'home') { renderCourses(); renderMosaic(); }
 if (page === 'login') bindAuth('loginForm', login, 'dashboard.html');
 if (page === 'register') bindAuth('registerForm', register, 'index.html#courses');
 if (page === 'dashboard') renderDashboard();
-if (page === 'leaderboard') renderBoard();
+if (page === 'leaderboard') {
+  document.addEventListener('click', e => {
+    if (e.target.dataset.board) { boardView.cid = e.target.dataset.board; renderBoard(); }
+  });
+  renderBoard();
+}
 if (page === 'stats') {
   document.addEventListener('click', e => {
     if (e.target.dataset.cid) { view.cid = e.target.dataset.cid; renderStatsPage(); }
