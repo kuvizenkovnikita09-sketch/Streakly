@@ -104,7 +104,7 @@ function renderMosaic() {
   const pattern = '203142053120413025314203241530';
   const raised = [3, 8, 14, 19, 26];
   $('mosaic').innerHTML = [...pattern].map((s, i) =>
-    `<i class="g${s}${raised.includes(i) ? ' up' : ''}"></i>`).join('');
+    `<i class="g${s}${raised.includes(i) ? ' up' : ''}" style="--d:${i % 6 + Math.floor(i / 6)}"></i>`).join('');
 }
 
 function renderCourses(level = 'Все') {
@@ -239,8 +239,50 @@ function renderDashboard() {
   renderToday(u); renderWeek(u); renderStats(u);
 }
 
+// Фон из кубиков: по диагонали проходит неоновая фиолетовая волна
+function initWave() {
+  const cv = document.createElement('canvas');
+  cv.className = 'bgwave';
+  cv.setAttribute('aria-hidden', 'true');
+  document.body.prepend(cv);
+  const ctx = cv.getContext('2d'), S = 44, G = 4;  // размер кубика и зазор
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w, h;
+  const fit = () => {
+    const dpr = devicePixelRatio || 1;
+    w = innerWidth; h = innerHeight;
+    cv.width = w * dpr; cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  const draw = now => {
+    const cols = Math.ceil(w / S), rows = Math.ceil(h / S), span = cols + rows + 24;
+    const front = still ? span / 3 - 12 : ((now / 1000) * 9) % span - 12;  // положение гребня волны
+    ctx.clearRect(0, 0, w, h);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const v = 20 + ((((c * 73856093) ^ (r * 19349663)) >>> 0) % 7);
+      ctx.fillStyle = `rgb(${v},${v},${v + 4})`;
+      ctx.fillRect(c * S, r * S, S - G, S - G);
+      ctx.fillStyle = 'rgba(255,255,255,.05)';
+      ctx.fillRect(c * S, r * S, S - G, 2);
+    }
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const dist = c + r - front;
+      if (Math.abs(dist) > 9) continue;
+      const k = Math.exp(-((dist / 3.5) ** 2));  // 1 на гребне, быстро спадает в стороны
+      if (k > 0.3) { ctx.fillStyle = `rgba(176,77,255,${k * 0.14})`; ctx.fillRect(c * S - 3, r * S - 3, S - G + 6, S - G + 6); }
+      ctx.fillStyle = `rgba(176,77,255,${k * 0.6})`;
+      ctx.fillRect(c * S, r * S, S - G, S - G);
+    }
+    if (!still) requestAnimationFrame(draw);
+  };
+  fit();
+  addEventListener('resize', () => { fit(); if (still) draw(0); });
+  requestAnimationFrame(draw);
+}
+
 // ===== Запуск =====
 const page = document.body.dataset.page;
+initWave();
 renderNav();
 if ($('side')) renderSide();
 if (page === 'home') { renderCourses(); renderMosaic(); }
