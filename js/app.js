@@ -1,8 +1,16 @@
 // ===== Хранилище: localStorage. Позже заменим на запросы к Flask API. =====
 const DB = {
   load() {
-    try { return JSON.parse(localStorage.getItem('streakly')) || { users: {}, session: null }; }
-    catch { return { users: {}, session: null }; }
+    let d;
+    try { d = JSON.parse(localStorage.getItem('streakly')); } catch { d = null; }
+    d = d || { users: {}, session: null };
+    for (const u of Object.values(d.users)) {  // перенос из старого формата (один курс)
+      if (!u.enrolls) {
+        u.enrolls = {};
+        if (u.course) u.enrolls[u.course] = { course: u.course, start: u.start, reports: u.reports || {} };
+      }
+    }
+    return d;
   },
   save(d) { localStorage.setItem('streakly', JSON.stringify(d)); },
 };
@@ -24,7 +32,7 @@ function register(name, pass) {
   if (name.length < 3) return 'Имя: минимум 3 символа';
   if (pass.length < 6) return 'Пароль: минимум 6 символов';
   if (Object.hasOwn(d.users, name)) return 'Это имя уже занято';
-  d.users[name] = { pass: enc(pass), course: null, start: null, reports: {} };
+  d.users[name] = { pass: enc(pass), enrolls: {} };
   d.session = name;
   DB.save(d);
 }
@@ -45,13 +53,13 @@ function bindAuth(formId, action, next) {
   };
 }
 
+// Курс можно выбрать только один раз: повторно тот же курс не добавится
 function chooseCourse(id) {
   const d = DB.load(), u = d.users[d.session];
-  if (u.course === id) return true;
-  if (u.course && !confirm('Сменить курс? Прогресс текущего курса будет сброшен.')) return false;
-  Object.assign(u, { course: id, start: iso(today()), reports: {} });
-  DB.save(d);
-  return true;
+  if (!Object.hasOwn(u.enrolls, id)) {
+    u.enrolls[id] = { course: id, start: iso(today()), reports: {} };
+    DB.save(d);
+  }
 }
 
 // ===== Статистика =====
@@ -66,26 +74,48 @@ function dayPct(u, date) {
 }
 
 // Средний процент за период. Сегодняшний день без отчёта не считается пропуском.
-function avgPct(u, from, to) {
+// Курсы пользователя и вспомогательные функции
+const enrolls = u => Object.values(u.enrolls);
+const courseOf = e => COURSES.find(x => x.id === e.course);
+// Статус дня: ov (сверх нормы), ok (норма), pt (частично), ms (не выполнено)
+const status = p => p > 1.0001 ? 'ov' : p >= 0.9999 ? 'ok' : p > 0 ? 'pt' : 'ms';
+
+// Сумма процентов и число дней по одному курсу. Сегодня без отчёта пропуском не считается.
+function sumPct(e, from, to) {
   let sum = 0, k = 0;
   for (let d = new Date(from); d <= to; d = addDays(d, 1)) {
-    if (iso(d) === iso(today()) && !u.reports[iso(d)]) continue;
-    const p = dayPct(u, d);
+    if (iso(d) === iso(today()) && !e.reports[iso(d)]) continue;
+    const p = dayPct(e, d);
     if (p !== null) { sum += p; k++; }
   }
+  return [sum, k];
+}
+
+// Средний процент по всем курсам за период
+function avgPct(u, from, to) {
+  let sum = 0, k = 0;
+  for (const e of enrolls(u)) { const [s, n] = sumPct(e, from, to); sum += s; k += n; }
   return k ? Math.round(100 * sum / k) : null;
 }
 
+// Средний процент за один день по всем активным в этот день курсам
+function dayAvg(u, date) {
+  const list = enrolls(u).map(e => dayPct(e, date)).filter(p => p !== null);
+  return list.length ? list.reduce((x, y) => x + y, 0) / list.length : null;
+}
+
+// Серия: дни подряд, когда выполнен хотя бы один курс
+const anyDone = (u, d) => enrolls(u).some(e => dayPct(e, d) >= 1);
 function streak(u) {
   let d = today(), n = 0;
-  if (!(dayPct(u, d) >= 1)) d = addDays(d, -1);
-  while (dayPct(u, d) >= 1) { n++; d = addDays(d, -1); }
+  if (!anyDone(u, d)) d = addDays(d, -1);
+  while (anyDone(u, d)) { n++; d = addDays(d, -1); }
   return n;
 }
 
 function monthScore(u) {
   const t = today();
-  return u.course ? avgPct(u, new Date(t.getFullYear(), t.getMonth(), 1), t) : null;
+  return avgPct(u, new Date(t.getFullYear(), t.getMonth(), 1), t);
 }
 
 // ===== Интерфейс =====
@@ -109,6 +139,7 @@ function renderMosaic() {
 
 function renderCourses(level = 'Все') {
   const d = DB.load(), u = d.session && d.users[d.session];
+  const has = id => u && Object.hasOwn(u.enrolls, id);
   $('filters').innerHTML = LEVELS.map(l =>
     `<button class="chip${l === level ? ' on' : ''}" data-level="${l}">${l}</button>`).join('');
   $('filters').onclick = e => { if (e.target.dataset.level) renderCourses(e.target.dataset.level); };
@@ -117,78 +148,94 @@ function renderCourses(level = 'Все') {
       <span class="tag">${c.level}</span>
       <h3>${c.title}</h3><p>${c.desc}</p>
       <p class="meta">${c.days} дн., подходов: ${c.sets}</p>
-      <button class="btn ${u && u.course === c.id ? '' : 'btn-ghost'}" data-id="${c.id}">${u && u.course === c.id ? 'Ваш курс' : 'Выбрать'}</button>
+      <button class="btn ${has(c.id) ? '' : 'btn-ghost'}" data-id="${c.id}">${has(c.id) ? 'Выбран' : 'Выбрать'}</button>
     </article>`).join('');
   $('courseList').onclick = e => {
     const id = e.target.dataset.id;
     if (!id) return;
     if (!DB.load().session) { location.href = 'register.html'; return; }
-    if (chooseCourse(id)) location.href = 'dashboard.html';
+    chooseCourse(id);
+    location.href = 'dashboard.html';
   };
 }
 
 function renderToday(u) {
-  const c = COURSES.find(x => x.id === u.course), box = $('today');
-  if (!c) {
-    box.innerHTML = '<h2>Курс не выбран</h2><p class="sub">Выберите курс, чтобы увидеть норму на сегодня.</p><a class="btn" href="index.html#courses">Выбрать курс</a>';
+  const list = enrolls(u), box = $('today');
+  if (!list.length) {
+    box.innerHTML = '<section class="card"><h2>Курсы не выбраны</h2><p class="sub">Выберите один или несколько курсов, чтобы увидеть норму на сегодня.</p><a class="btn" href="index.html#courses">Выбрать курс</a></section>';
     return;
   }
-  const day = diffDays(today(), parse(u.start)) + 1;
-  if (day > c.days) {
-    box.innerHTML = `<h2>${c.title}</h2><p class="sub">Курс пройден. Отличная работа!</p><a class="btn" href="index.html#courses">Выбрать новый курс</a>`;
-    return;
-  }
-  const n = norm(c, day), saved = u.reports[iso(today())] || [];
-  box.innerHTML = `
-    <h2>${c.title}</h2><p class="sub">День ${day} из ${c.days}. Норма на сегодня</p>
-    <div class="big">${n.sets}×${n.reps}<small>подходов (${c.unit || 'раз'})</small></div>
-    <p class="sub">${saved.length ? 'Сегодня выполнено: ' + Math.round(100 * saved.reduce((x, y) => x + y, 0) / (n.sets * n.reps)) + '% нормы' : 'Отчёт за сегодня ещё не сохранён'}</p>
-    <form id="reportForm">
-      ${Array.from({ length: n.sets }, (_, i) => `
-        <label for="s${i}">Подход ${i + 1}</label>
-        <input id="s${i}" type="number" min="0" max="999" placeholder="${n.reps}" value="${saved[i] ?? ''}">`).join('')}
-      <button class="btn" type="submit">Сохранить отчёт</button>
-      <p class="ok-msg" id="msg" role="status"></p>
-    </form>`;
-  $('reportForm').onsubmit = e => {
-    e.preventDefault();
+  box.innerHTML = list.map(e => {
+    const c = courseOf(e), id = e.course, day = diffDays(today(), parse(e.start)) + 1;
+    const leave = `<button class="btn btn-ghost small" data-leave="${id}">Покинуть курс</button>`;
+    if (day > c.days) return `<section class="card"><h2>${c.title}</h2><p class="sub">Курс пройден. Отличная работа!</p>${leave}</section>`;
+    const n = norm(c, day), saved = e.reports[iso(today())] || [];
+    return `<section class="card">
+      <h2>${c.title}</h2><p class="sub">День ${day} из ${c.days}. Норма на сегодня</p>
+      <div class="big">${n.sets}×${n.reps}<small>подходов (${c.unit || 'раз'})</small></div>
+      <p class="sub">${saved.length ? 'Сегодня выполнено: ' + Math.round(100 * saved.reduce((x, y) => x + y, 0) / (n.sets * n.reps)) + '% нормы' : 'Отчёт за сегодня ещё не сохранён'}</p>
+      <form class="rf" id="rf_${id}">
+        ${Array.from({ length: n.sets }, (_, i) => `
+          <label for="s_${id}_${i}">Подход ${i + 1}</label>
+          <input id="s_${id}_${i}" type="number" min="0" max="999" placeholder="${n.reps}" value="${saved[i] ?? ''}">`).join('')}
+        <button class="btn" type="submit">Сохранить отчёт</button>
+        <p class="ok-msg" id="msg_${id}" role="status"></p>
+      </form>${leave}</section>`;
+  }).join('');
+  box.onclick = ev => {
+    const id = ev.target.dataset.leave;
+    if (!id || !confirm('Покинуть курс? Прогресс по нему будет удалён.')) return;
     const d = DB.load();
-    d.users[d.session].reports[iso(today())] =
-      Array.from({ length: n.sets }, (_, i) => Math.max(0, Math.min(999, parseInt($('s' + i).value) || 0)));
+    delete d.users[d.session].enrolls[id];
     DB.save(d);
     renderDashboard();
-    $('msg').textContent = 'Отчёт сохранён';
   };
+  list.forEach(e => {
+    const f = $('rf_' + e.course);
+    if (!f) return;
+    f.onsubmit = ev => {
+      ev.preventDefault();
+      const id = e.course, n = norm(courseOf(e), diffDays(today(), parse(e.start)) + 1);
+      const d = DB.load();
+      d.users[d.session].enrolls[id].reports[iso(today())] =
+        Array.from({ length: n.sets }, (_, i) => Math.max(0, Math.min(999, parseInt($(`s_${id}_${i}`).value) || 0)));
+      DB.save(d);
+      renderDashboard();
+      $('msg_' + id).textContent = 'Отчёт сохранён';
+    };
+  });
 }
 
 function renderWeek(u) {
   const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const monday = addDays(today(), -((today().getDay() + 6) % 7));
+  const reportedToday = enrolls(u).some(e => e.reports[iso(today())]);
   $('week').innerHTML = names.map((nm, i) => {
     const date = addDays(monday, i), isToday = iso(date) === iso(today());
-    const p = date > today() || (isToday && !u.reports[iso(date)]) ? null : dayPct(u, date);
-    const cls = p > 1 ? 'ov' : p === 1 ? 'ok' : p > 0 ? 'pt' : 'ms', w = p === null ? 0 : Math.max(4, Math.min(100, p * 100));
+    const p = date > today() || (isToday && !reportedToday) ? null : dayAvg(u, date);
+    const w = p === null ? 0 : Math.max(4, Math.min(100, p * 100));
     return `<div class="row"><i${isToday ? ' class="now"' : ''}>${nm}</i>
-      <span class="bar"><b class="${cls}" style="width:${w}%"></b></span>
+      <span class="bar"><b class="${status(p)}" style="width:${w}%"></b></span>
       <span class="pc">${p === null ? '–' : Math.round(p * 100) + '%'}</span></div>`;
   }).join('');
-  const wp = u.course ? avgPct(u, monday, today()) : null;
-  $('weekSub').textContent = wp === null ? 'Пока нет данных' : `${wp}% нормы выполнено`;
+  const wp = avgPct(u, monday, today());
+  $('weekSub').textContent = wp === null ? 'Пока нет данных' : `${wp}% нормы выполнено (по всем курсам)`;
 }
 
+const tile = (v, l) => `<div class="tile"><strong>${v}</strong>${l}</div>`;
+
 function renderStats(u) {
-  const t = today(), monthPct = u.course ? avgPct(u, new Date(t.getFullYear(), t.getMonth(), 1), t) : null;
-  const weekPct = u.course ? avgPct(u, addDays(t, -((t.getDay() + 6) % 7)), t) : null;
-  const total = Object.values(u.reports).flat().reduce((a, b) => a + b, 0);
-  const tile = (v, l) => `<div class="tile"><strong>${v}</strong>${l}</div>`;
+  const t = today(), monday = addDays(t, -((t.getDay() + 6) % 7));
+  const weekPct = avgPct(u, monday, t), monthPct = monthScore(u);
+  const total = enrolls(u).flatMap(e => Object.values(e.reports).flat()).reduce((x, y) => x + y, 0);
   $('stats').innerHTML =
-    tile(u.course ? streak(u) : 0, 'дней подряд') + tile(weekPct === null ? '–' : weekPct + '%', 'за неделю') +
+    tile(streak(u), 'дней подряд') + tile(weekPct === null ? '–' : weekPct + '%', 'за неделю') +
     tile(monthPct === null ? '–' : monthPct + '%', 'за месяц') + tile(total, 'всего выполнено');
 }
 
 function renderSide() {
   const items = [['home', 'index.html', 'Курсы'], ['dashboard', 'dashboard.html', 'Мои курсы'],
-    ['leaderboard', 'leaderboard.html', 'Лидерборд'], ['about', 'about.html', 'О сайте']];
+    ['stats', 'stats.html', 'Моя статистика'], ['leaderboard', 'leaderboard.html', 'Лидерборд'], ['about', 'about.html', 'О сайте']];
   const side = $('side');
   side.innerHTML = `
     <nav class="panel" id="panel" aria-label="Разделы сайта"><h2>Разделы</h2>${items.map(([k, h, t]) =>
@@ -218,7 +265,7 @@ function figure(winner) {
 function renderBoard() {
   const d = DB.load(), u = d.session && d.users[d.session];
   const list = [{ n: 'Алина', p: 104 }, { n: 'Максим', p: 88 }, { n: 'Дмитрий', p: 81 }, { n: 'Ольга', p: 72 }, { n: 'Иван', p: 65 }];
-  if (u) list.push({ n: d.session, p: (u.course && monthScore(u)) || 0, me: true });
+  if (u) list.push({ n: d.session, p: monthScore(u) || 0, me: true });
   list.sort((x, y) => y.p - x.p);
   const places = [2, 1, 3];  // на пьедестале слева направо: 2-е, 1-е, 3-е место
   $('podium').innerHTML = [list[1], list[0], list[2]].map((r, i) => `
@@ -280,6 +327,48 @@ function initWave() {
   requestAnimationFrame(draw);
 }
 
+// ===== Моя статистика: календарь по месяцам =====
+const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const view = { month: null, cid: 'all' };  // какой месяц и курс показаны
+
+function renderStatsPage() {
+  const d = DB.load();
+  if (!d.session) { location.href = 'login.html'; return; }
+  const u = d.users[d.session], list = enrolls(u);
+  if (!view.month) { const t = today(); view.month = new Date(t.getFullYear(), t.getMonth(), 1); }
+  if (view.cid !== 'all' && !u.enrolls[view.cid]) view.cid = 'all';
+  const m = view.month, y = m.getFullYear(), mo = m.getMonth();
+  $('monthTitle').textContent = `${MONTHS[mo]} ${y}`;
+  $('statsFilters').innerHTML = [['all', 'Все курсы'], ...list.map(e => [e.course, courseOf(e).title])].map(([id, t]) =>
+    `<button class="chip${id === view.cid ? ' on' : ''}" data-cid="${id}">${esc(t)}</button>`).join('');
+  if (!list.length) {
+    $('calendar').innerHTML = '<p class="sub">Пока нет курсов. Выберите курс в разделе «Курсы».</p>';
+    $('monthStats').innerHTML = ''; $('monthSub').textContent = '';
+    return;
+  }
+  const pick = view.cid === 'all' ? list : [u.enrolls[view.cid]];
+  const pct = date => {
+    const l = pick.map(e => dayPct(e, date)).filter(p => p !== null);
+    return l.length ? l.reduce((x, y) => x + y, 0) / l.length : null;
+  };
+  const cnt = { ov: 0, ok: 0, pt: 0, ms: 0 };
+  let sum = 0, k = 0;
+  let html = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(n => `<b class="dow">${n}</b>`).join('') + '<i></i>'.repeat((m.getDay() + 6) % 7);
+  for (let n = 1, last = new Date(y, mo + 1, 0).getDate(); n <= last; n++) {
+    const date = new Date(y, mo, n), isToday = iso(date) === iso(today());
+    let p = pct(date), cls = '';
+    // цвет получают только прошедшие дни курса (и сегодня, если есть отчёт)
+    if (p !== null && date <= today() && !(isToday && !pick.some(e => e.reports[iso(date)]))) {
+      cls = status(p); cnt[cls]++; sum += p; k++;
+    } else p = null;
+    const label = `${String(n).padStart(2, '0')}.${String(mo + 1).padStart(2, '0')}` + (p === null ? '' : `: ${Math.round(p * 100)}%`);
+    html += `<div class="cell ${cls}${isToday ? ' today' : ''}" title="${label}" aria-label="${label}"><span>${n}</span>${p === null ? '' : `<small>${Math.round(p * 100)}%</small>`}</div>`;
+  }
+  $('calendar').innerHTML = html;
+  $('monthSub').textContent = k ? `Средний процент за месяц: ${Math.round(100 * sum / k)}%` : 'В этом месяце пока нет данных';
+  $('monthStats').innerHTML = tile(cnt.ok + cnt.ov, 'дней по плану') + tile(cnt.ov, 'сверх нормы') + tile(cnt.pt, 'частично') + tile(cnt.ms, 'пропусков');
+}
+
 // ===== Запуск =====
 const page = document.body.dataset.page;
 initWave();
@@ -290,3 +379,10 @@ if (page === 'login') bindAuth('loginForm', login, 'dashboard.html');
 if (page === 'register') bindAuth('registerForm', register, 'index.html#courses');
 if (page === 'dashboard') renderDashboard();
 if (page === 'leaderboard') renderBoard();
+if (page === 'stats') {
+  document.addEventListener('click', e => {
+    if (e.target.dataset.cid) { view.cid = e.target.dataset.cid; renderStatsPage(); }
+    if (e.target.dataset.nav) { view.month = new Date(view.month.getFullYear(), view.month.getMonth() + Number(e.target.dataset.nav), 1); renderStatsPage(); }
+  });
+  renderStatsPage();
+}
